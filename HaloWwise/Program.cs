@@ -1,19 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HaloWwise
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             // Make Debug Write and Console Write the same thing with Trace
-            var listeners = new TraceListener[] { new TextWriterTraceListener(Console.Out) };
+            TraceListener[] listeners = new TraceListener[] { new TextWriterTraceListener(Console.Out) };
             Debug.Listeners.AddRange(listeners);
 
             if (args.Length < 2)
@@ -24,54 +20,76 @@ namespace HaloWwise
                 Trace.WriteLine("\tHaloWwise.exe <input directory (recursive)> <extraction path>");
 
                 Trace.WriteLine("\n\nNote: If you place ww2ogg.exe and revorb.exe (with the codebook) in the same Path as this Exe, it will attempt to convert *.wem files to *.ogg during extraction (H5 only)\n");
+
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadKey();
                 return;
             }
 
-
-
-            var input = args[0];
-            var output = args[1];
+            string input = args[0];
+            string output = args[1];
 
             // If output isn't Directory, or not there, bail
-            try
+            if (File.Exists(output))
             {
                 if (!File.GetAttributes(output).HasFlag(FileAttributes.Directory))
                 {
                     Trace.WriteLine("Error: Output is not a Directory");
                     return;
                 }
-            } catch
-            {
-                Trace.WriteLine("Error: Output directory not found");
-                return;
             }
-
-
-            try
+            else
             {
-                // Chage what we do, depending on if input is a file or a folder
-                if (File.GetAttributes(input).HasFlag(FileAttributes.Directory))
+                if (!Directory.Exists(output))
+                {
+                    Directory.CreateDirectory(output);
+                }
+            }
+            //if (!File.GetAttributes(output).HasFlag(FileAttributes.Directory))
+            //    Trace.WriteLine("Error: Output is not a Directory");
+            //else
+
+            // Chage what we do, depending on if input is a file or a folder
+            if (File.Exists(input))
+            {
+                // Extract just the one Pack
+                try
+                {
+                    PackManager packManager = new PackManager(input, output);
+                    packManager.ExtractPack();
+                }
+                catch
+                {
+                    Trace.WriteLine($"Error: Unable to process {input}");
+                    return;
+                }
+            }
+            else
+            {
+                if (Directory.Exists(input))
                 {
                     // Find all Packs, extract them to output
-                    var packs = Directory.GetFiles(input, "*.pck", SearchOption.AllDirectories);
+                    string[] packs = Directory.GetFiles(input, "*.pck", SearchOption.AllDirectories);
                     foreach (string pack in packs)
                     {
-                        var packManager = new PackManager(pack, output);
-                        packManager.ExtractPack();
+                        try
+                        {
+                            PackManager packManager = new PackManager(pack, output);
+                            packManager.ExtractPack();
+                        }
+                        catch
+                        {
+                            Trace.WriteLine($"Error: Unable to process {pack}");
+                        }
                     }
                 }
                 else
                 {
-                    // Extract just the one Pack
-                    var packManager = new PackManager(input, output);
-                    packManager.ExtractPack();
+                    Trace.WriteLine($"Error: {input} not found.");
                 }
             }
-            catch
-            {
-                Trace.WriteLine("Error: Unable to process Input");
-                return;
-            }
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
         }
     }
 }
